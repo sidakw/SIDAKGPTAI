@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SIDAKGPT | AI AUTOMATION</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
+        .glass { background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
+        #flow::-webkit-scrollbar { width: 4px; }
+        #flow::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="p-5 border-b border-zinc-900 glass flex justify-between items-center">
+        <h1 class="text-2xl font-black text-blue-500 tracking-tighter">SIDAKGPT</h1>
+        <div class="text-[10px] border border-blue-500/50 px-3 py-1 rounded-full text-blue-400">UNLIMITED MODE</div>
+    </header>
+
+    <main id="flow" class="flex-1 overflow-y-auto p-6 space-y-6"></main>
+
+    <footer class="p-6 glass relative">
+        <div class="max-w-4xl mx-auto flex items-center gap-3 relative">
+            
+            <label class="cursor-pointer p-4 bg-zinc-900 rounded-2xl hover:bg-zinc-800 transition">
+                <i data-lucide="image-plus" class="text-blue-500"></i>
+                <input type="file" id="file-in" class="hidden" accept="image/*">
+            </label>
+
+            <div class="flex-1 relative">
+                <input id="prompt" class="w-full bg-zinc-900 border border-zinc-800 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600 text-white pr-16" placeholder="ASK SIDAKGPT...">
+                
+                <div class="absolute right-2 top-2">
+                    <button onclick="toggleMenu()" class="p-2 bg-blue-600 rounded-xl">
+                        <i data-lucide="plus" id="plus-icon"></i>
+                    </button>
+                    <div id="menu" class="hidden absolute bottom-14 right-0 w-48 bg-zinc-900 border border-zinc-800 rounded-2xl p-2 shadow-2xl flex flex-col gap-1">
+                        <button onclick="set('Talk with Sidak')" class="flex items-center gap-2 p-3 hover:bg-blue-600/20 rounded-xl text-xs font-bold text-blue-400">Talk with Sidak</button>
+                        <button onclick="set('Create Video')" class="flex items-center gap-2 p-3 hover:bg-blue-600/20 rounded-xl text-xs font-bold text-blue-400">Create Video</button>
+                        <button onclick="set('Create Photo')" class="flex items-center gap-2 p-3 hover:bg-blue-600/20 rounded-xl text-xs font-bold text-blue-400">Create Photo</button>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="run()" class="bg-blue-600 px-8 py-4 rounded-2xl font-bold">RUN</button>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        // --- CONNECTED TO YOUR WORKER ---
+        const BRAIN_URL = "https://httdakgptbrain.ekamsingh4293.workers.dev/"; 
+
+        function toggleMenu() { document.getElementById('menu').classList.toggle('hidden'); }
+        function set(t) { document.getElementById('prompt').value = t + ": "; toggleMenu(); }
+
+        async function run() {
+            const input = document.getElementById('prompt');
+            const flow = document.getElementById('flow');
+            const txt = input.value.trim();
+            if(!txt) return;
+
+            flow.innerHTML += `<div class="flex justify-end mb-4"><div class="bg-blue-600 p-4 rounded-2xl max-w-[80%]">${txt}</div></div>`;
+            input.value = "";
+
+            try {
+                const res = await fetch(BRAIN_URL, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ messages: [{role: "user", content: txt}] })
+                });
+                const data = await res.json();
+                const ai = data.choices[0].message.content;
+
+                if (ai.includes('[VIDEO:')) {
+                    const topic = ai.match(/\[VIDEO:(.*?)\]/)[1];
+                    const vRes = await fetch(BRAIN_URL, { method: 'POST', body: JSON.stringify({ type: 'video', prompt: topic }) });
+                    const vData = await vRes.json();
+                    flow.innerHTML += `<div class="bg-zinc-900 p-2 rounded-2xl max-w-sm border border-blue-500"><video src="${vData.url}" controls class="w-full rounded-xl"></video></div>`;
+                } else if (ai.includes('[IMAGE:')) {
+                    const topic = ai.match(/\[IMAGE:(.*?)\]/)[1];
+                    flow.innerHTML += `<div class="bg-zinc-900 p-2 rounded-2xl max-w-sm border border-blue-500"><img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1080&height=1080" class="w-full rounded-xl"></div>`;
+                } else {
+                    flow.innerHTML += `<div class="bg-zinc-900 p-5 rounded-2xl max-w-[85%] border border-zinc-800 text-zinc-300">${marked.parse(ai)}</div>`;
+                }
+            } catch (e) { flow.innerHTML += `<p class="text-red-500 text-xs">Connection Error: Check if Worker is Deployed.</p>`; }
+            flow.scrollTop = flow.scrollHeight;
+        }
+    </script>
+</body>
+</html>
