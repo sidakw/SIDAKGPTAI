@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIDAKGPT V6</title>
+    <title>SIDAKGPT FIX</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -19,7 +19,7 @@
 
     <header class="p-4 border-b border-zinc-900 flex justify-between items-center glass">
         <h1 class="font-bold text-xl text-blue-500">SIDAKGPT</h1>
-        <button onclick="localStorage.removeItem('sidak_chat'); location.reload();"><i data-lucide="trash-2"></i></button>
+        <button onclick="localStorage.removeItem('sidak_chat'); location.reload();"><i data-lucide="trash-2" class="text-zinc-500"></i></button>
     </header>
 
     <main id="flow" class="flex-1 overflow-y-auto p-4 space-y-4 pb-32"></main>
@@ -27,7 +27,7 @@
     <footer class="fixed bottom-0 w-full p-4 glass">
         <div class="max-w-2xl mx-auto flex items-center gap-2">
             <button onclick="startVoice()" class="p-4 bg-zinc-900 rounded-2xl border border-zinc-800"><i data-lucide="mic" id="mic"></i></button>
-            <input id="prompt" class="flex-1 bg-zinc-900 border border-zinc-800 p-4 rounded-2xl outline-none" placeholder="Message SidakGPT...">
+            <input id="prompt" class="flex-1 bg-zinc-900 border border-zinc-800 p-4 rounded-2xl outline-none" placeholder="Ask Sidak...">
             <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl active:scale-90"><i data-lucide="send"></i></button>
         </div>
     </footer>
@@ -56,7 +56,7 @@
             const txt = input.value.trim();
             if(!txt) return;
 
-            flow.innerHTML += `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%]">${txt}</div></div>`;
+            flow.innerHTML += `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%] shadow-lg">${txt}</div></div>`;
             input.value = "";
             flow.scrollTop = flow.scrollHeight;
 
@@ -84,15 +84,15 @@
                         const pexData = await pex.json();
                         media = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop class="rounded-xl w-full"></video>` : `<img src="${pexData.url}" class="rounded-xl w-full">`;
                     }
-                    aiHtml = `<div class="ai-msg p-2 max-w-[95%] mt-2">${media}</div>`;
+                    aiHtml = `<div class="ai-msg p-2 max-w-[95%] shadow-xl mt-2">${media}</div>`;
                 } else {
-                    aiHtml = `<div class="ai-msg p-4 text-sm max-w-[90%] mt-2">${marked.parse(ai)}</div>`;
+                    aiHtml = `<div class="ai-msg p-4 text-sm max-w-[90%] leading-relaxed mt-2">${marked.parse(ai)}</div>`;
                 }
                 
                 flow.innerHTML += aiHtml;
                 localStorage.setItem('sidak_chat', flow.innerHTML);
             } catch (e) {
-                flow.innerHTML += `<p class="text-red-500 text-center text-[10px] py-4">ERROR: Check Brain Logs</p>`;
+                flow.innerHTML += `<p class="text-red-500 text-center text-[10px] py-4">Error: Please check your Worker status.</p>`;
             }
             flow.scrollTop = flow.scrollHeight;
         }
