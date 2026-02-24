@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIDAKGPT V8</title>
+    <title>SIDAKGPT V9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
-        .glass { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(15px); border-top: 1px solid #333; }
+        .glass { background: rgba(10, 10, 10, 0.9); backdrop-filter: blur(15px); border-top: 1px solid #333; }
         #flow::-webkit-scrollbar { width: 0px; }
         .ai-msg { background: #111; border: 1px solid #222; border-radius: 1rem 1rem 1rem 0; }
         .user-msg { background: #2563eb; border-radius: 1rem 1rem 0 1rem; }
@@ -18,7 +18,7 @@
 <body class="h-screen flex flex-col">
 
     <header class="p-4 border-b border-zinc-900 flex justify-between items-center glass">
-        <h1 class="font-bold text-xl text-blue-500">SIDAKGPT <span class="text-[10px] bg-blue-600 px-2 rounded">v8</span></h1>
+        <h1 class="font-black text-xl text-blue-500">SIDAKGPT <span class="text-[10px] text-white opacity-50">V9</span></h1>
         <button onclick="localStorage.clear(); location.reload();"><i data-lucide="trash-2"></i></button>
     </header>
 
@@ -26,8 +26,7 @@
 
     <footer class="fixed bottom-0 w-full p-4 glass">
         <div class="max-w-2xl mx-auto flex items-center gap-2">
-            <button onclick="startVoice()" class="p-4 bg-zinc-900 rounded-2xl"><i data-lucide="mic" id="mic"></i></button>
-            <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none" placeholder="Try 'Send a photo of a lion'...">
+            <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none" placeholder="Send a photo of...">
             <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl"><i data-lucide="send"></i></button>
         </div>
     </footer>
@@ -36,14 +35,19 @@
         lucide.createIcons();
         const BRAIN_URL = "https://gptbrain.ekamsingh4293.workers.dev";
 
-        // LOAD HISTORY ON OPEN
+        // --- HISTORY LOGIC ---
         window.onload = () => {
-            const history = localStorage.getItem('SIDAK_V8');
-            if(history) {
-                document.getElementById('flow').innerHTML = history;
+            const data = localStorage.getItem('SIDAK_FINAL');
+            if(data) {
+                document.getElementById('flow').innerHTML = data;
                 document.getElementById('flow').scrollTop = document.getElementById('flow').scrollHeight;
             }
         };
+
+        function saveHistory() {
+            const content = document.getElementById('flow').innerHTML;
+            localStorage.setItem('SIDAK_FINAL', content);
+        }
 
         async function run() {
             const input = document.getElementById('prompt');
@@ -51,6 +55,7 @@
             const txt = input.value.trim();
             if(!txt) return;
 
+            // Add User Msg
             flow.innerHTML += `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%]">${txt}</div></div>`;
             input.value = "";
             flow.scrollTop = flow.scrollHeight;
@@ -64,35 +69,37 @@
 
                 const data = await res.json();
                 const ai = data.reply;
-                
-                // Text Response
+
+                // 1. Show Text
                 flow.innerHTML += `<div class="ai-msg p-4 text-sm max-w-[90%] mt-2">${marked.parse(ai)}</div>`;
 
-                // Photo/Video/Art Response
-                if (ai.includes('[DRAW:') || ai.includes('[PHOTO:') || ai.includes('[VIDEO:')) {
-                    const match = ai.match(/\[(DRAW|PHOTO|VIDEO):(.*?)\]/);
-                    const type = match[1];
+                // 2. Look for Photos/Art
+                const reg = /\[(DRAW|PHOTO|VIDEO):(.*?)\]/i;
+                const match = ai.match(reg);
+                
+                if (match) {
+                    const type = match[1].toUpperCase();
                     const topic = match[2].trim();
                     
                     if (type === 'DRAW') {
                         flow.innerHTML += `<div class="ai-msg p-2 mt-2"><img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1024&height=1024" class="rounded-xl"></div>`;
+                        saveHistory();
                     } else {
                         const pex = await fetch(BRAIN_URL, { method: 'POST', body: JSON.stringify({ type: "pexels", media: type === 'VIDEO' ? "video" : "photo", prompt: topic }) });
                         const pexData = await pex.json();
                         if(pexData.url) {
                             const media = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop class="rounded-xl"></video>` : `<img src="${pexData.url}" class="rounded-xl">`;
                             flow.innerHTML += `<div class="ai-msg p-2 mt-2">${media}</div>`;
+                            saveHistory();
                         }
                     }
                 }
                 
-                // SAVE TO HISTORY
-                localStorage.setItem('SIDAK_V8', flow.innerHTML);
-
+                saveHistory();
+                flow.scrollTop = flow.scrollHeight;
             } catch (e) {
-                console.error(e);
+                console.log("Error");
             }
-            flow.scrollTop = flow.scrollHeight;
         }
     </script>
 </body>
