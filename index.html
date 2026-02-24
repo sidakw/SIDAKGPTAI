@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIDAKGPT V15</title>
+    <title>SIDAKGPT V16</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -19,7 +19,7 @@
 <body class="h-screen flex flex-col">
 
     <header class="p-4 border-b border-zinc-800 flex justify-between items-center glass">
-        <h1 class="font-black text-xl text-blue-500">SIDAKGPT <span class="text-xs text-white opacity-20">V15</span></h1>
+        <h1 class="font-black text-xl text-blue-500">SIDAKGPT <span class="text-xs text-white opacity-20">V16</span></h1>
         <button onclick="clearChat()"><i data-lucide="trash-2" class="w-5 text-zinc-500"></i></button>
     </header>
 
@@ -48,24 +48,37 @@
         const flow = document.getElementById('flow');
         let currentImage = null;
 
-        // --- 1. LOAD HISTORY ---
-        window.addEventListener('load', () => {
-            const saved = localStorage.getItem('SIDAK_CHATS_V15');
-            if (saved) {
-                flow.innerHTML = JSON.parse(saved);
-                flow.scrollTop = flow.scrollHeight;
-            }
-        });
+        // --- 1. LOAD HISTORY (Safe Method) ---
+        window.onload = () => {
+            try {
+                const saved = localStorage.getItem('SIDAK_STABLE_V16');
+                if (saved) {
+                    flow.innerHTML = saved;
+                    flow.scrollTop = flow.scrollHeight;
+                }
+            } catch (e) { console.error("History Load Failed"); }
+        };
 
-        // --- 2. SAVE HISTORY ---
-        function save() {
-            // We stringify the data to make it browser-safe
-            const chatData = JSON.stringify(flow.innerHTML);
-            localStorage.setItem('SIDAK_CHATS_V15', chatData);
+        // --- 2. THE "SCRUBBER" SAVE ---
+        function saveChat() {
+            // Create a temporary version of the chat
+            const clone = flow.cloneNode(true);
+            // Find all uploaded images (base64) and remove them to save space
+            const base64Images = clone.querySelectorAll('img[src^="data:image"]');
+            base64Images.forEach(img => {
+                img.src = "https://via.placeholder.com/150?text=Uploaded+Photo";
+            });
+
+            try {
+                localStorage.setItem('SIDAK_STABLE_V16', clone.innerHTML);
+            } catch (e) {
+                console.log("Memory Full. Clearing oldest messages.");
+                localStorage.clear();
+            }
         }
 
         function clearChat() {
-            localStorage.removeItem('SIDAK_CHATS_V15');
+            localStorage.removeItem('SIDAK_STABLE_V16');
             location.reload();
         }
 
@@ -89,16 +102,16 @@
             const txt = input.value.trim();
             if (!txt && !currentImage) return;
 
-            let html = `<div class="flex flex-col items-end gap-2">`;
-            if (currentImage) html += `<img src="${currentImage}" class="w-48 rounded-lg">`;
-            html += `<div class="user-msg p-3 text-sm max-w-[80%]">${txt}</div></div>`;
-            flow.innerHTML += html;
+            let userHtml = `<div class="flex flex-col items-end gap-2">`;
+            if (currentImage) userHtml += `<img src="${currentImage}" class="w-48 rounded-lg shadow-lg">`;
+            userHtml += `<div class="user-msg p-3 text-sm max-w-[80%]">${txt}</div></div>`;
+            flow.innerHTML += userHtml;
             
             const imgData = currentImage;
             cancelImg();
             input.value = "";
             flow.scrollTop = flow.scrollHeight;
-            save(); // Save user message
+            saveChat(); // Save user message
 
             try {
                 const res = await fetch(BRAIN_URL, {
@@ -127,9 +140,11 @@
                         }
                     }
                 }
-                save(); // Save AI reply
+                saveChat(); // Save AI message
                 flow.scrollTop = flow.scrollHeight;
-            } catch (e) { console.log(e); }
+            } catch (e) {
+                flow.innerHTML += `<p class="text-red-500 text-center text-xs">Offline</p>`;
+            }
         }
     </script>
 </body>
