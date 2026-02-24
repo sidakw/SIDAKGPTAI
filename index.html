@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIDAKGPT V10</title>
+    <title>SIDAKGPT V11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
-        .glass { background: rgba(10, 10, 10, 0.9); backdrop-filter: blur(15px); border-top: 1px solid #333; }
+        .glass { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(20px); border-top: 1px solid #333; }
         #flow::-webkit-scrollbar { width: 0px; }
         .ai-msg { background: #111; border: 1px solid #222; border-radius: 1rem 1rem 1rem 0; }
         .user-msg { background: #2563eb; border-radius: 1rem 1rem 0 1rem; }
@@ -18,49 +18,47 @@
 <body class="h-screen flex flex-col">
 
     <header class="p-4 border-b border-zinc-900 flex justify-between items-center glass">
-        <h1 class="font-black text-xl text-blue-500">SIDAKGPT <span class="text-[10px] text-white opacity-50">STABLE</span></h1>
-        <button onclick="localStorage.clear(); location.reload();"><i data-lucide="trash-2" class="text-zinc-600"></i></button>
+        <h1 class="font-bold text-xl text-blue-500">SIDAKGPT</h1>
+        <button onclick="localStorage.clear(); location.reload();" class="text-zinc-500 hover:text-red-500"><i data-lucide="trash-2"></i></button>
     </header>
 
     <main id="flow" class="flex-1 overflow-y-auto p-4 space-y-4 pb-32"></main>
 
     <footer class="fixed bottom-0 w-full p-4 glass">
         <div class="max-w-2xl mx-auto flex items-center gap-2">
-            <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none border border-zinc-800 focus:border-blue-500" placeholder="Type 'Send a photo of a forest'...">
-            <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl active:scale-90"><i data-lucide="send"></i></button>
+            <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none" placeholder="Ask for a photo...">
+            <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl"><i data-lucide="send"></i></button>
         </div>
     </footer>
 
     <script>
         lucide.createIcons();
         const BRAIN_URL = "https://gptbrain.ekamsingh4293.workers.dev";
-
-        // --- THE "STABLE" HISTORY LOGIC ---
         const flow = document.getElementById('flow');
-        
+
+        // --- FORCE LOAD HISTORY ---
         window.onload = () => {
-            const savedData = localStorage.getItem('SIDAK_STABLE_CHAT');
-            if(savedData) {
-                flow.innerHTML = savedData;
+            const saved = localStorage.getItem('SIDAK_V11');
+            if(saved) {
+                flow.innerHTML = saved;
                 flow.scrollTop = flow.scrollHeight;
             }
         };
 
-        // Auto-save history every 2 seconds
-        setInterval(() => {
-            if (flow.innerHTML.length > 0) {
-                localStorage.setItem('SIDAK_STABLE_CHAT', flow.innerHTML);
-            }
-        }, 2000);
+        // --- FORCE SAVE FUNCTION ---
+        function forceSave() {
+            localStorage.setItem('SIDAK_V11', flow.innerHTML);
+        }
 
         async function run() {
             const input = document.getElementById('prompt');
             const txt = input.value.trim();
             if(!txt) return;
 
-            flow.innerHTML += `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%] shadow-lg">${txt}</div></div>`;
+            flow.innerHTML += `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%]">${txt}</div></div>`;
             input.value = "";
             flow.scrollTop = flow.scrollHeight;
+            forceSave();
 
             try {
                 const res = await fetch(BRAIN_URL, {
@@ -72,33 +70,32 @@
                 const data = await res.json();
                 const ai = data.reply;
 
-                // 1. Render text normally
+                // 1. Render Text
                 flow.innerHTML += `<div class="ai-msg p-4 text-sm max-w-[90%] mt-2">${marked.parse(ai)}</div>`;
+                forceSave();
 
-                // 2. Stronger Tag Hunter
-                const tags = ai.match(/\[(DRAW|PHOTO|VIDEO):(.*?)\]/gi);
-                
-                if (tags) {
-                    for (let tag of tags) {
-                        const parts = tag.replace('[', '').replace(']', '').split(':');
-                        const type = parts[0].toUpperCase();
-                        const topic = parts[1].trim();
+                // 2. Scan for Media (PHOTO/DRAW/VIDEO)
+                const mediaMatch = ai.match(/\[(DRAW|PHOTO|VIDEO):(.*?)\]/i);
+                if (mediaMatch) {
+                    const type = mediaMatch[1].toUpperCase();
+                    const topic = mediaMatch[2].trim();
 
-                        if (type === 'DRAW') {
-                            flow.innerHTML += `<div class="ai-msg p-2 mt-2 border-blue-900 border"><img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1024&height=1024" class="rounded-xl w-full"></div>`;
-                        } else {
-                            const pex = await fetch(BRAIN_URL, { method: 'POST', body: JSON.stringify({ type: "pexels", media: type === 'VIDEO' ? "video" : "photo", prompt: topic }) });
-                            const pexData = await pex.json();
-                            if(pexData.url) {
-                                const media = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop class="rounded-xl w-full"></video>` : `<img src="${pexData.url}" class="rounded-xl w-full">`;
-                                flow.innerHTML += `<div class="ai-msg p-2 mt-2 border-zinc-800 border">${media}</div>`;
-                            }
+                    if (type === 'DRAW') {
+                        flow.innerHTML += `<div class="ai-msg p-2 mt-2"><img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1024&height=1024" class="rounded-xl"></div>`;
+                        forceSave();
+                    } else {
+                        const pex = await fetch(BRAIN_URL, { method: 'POST', body: JSON.stringify({ type: "pexels", media: type === 'VIDEO' ? "video" : "photo", prompt: topic }) });
+                        const pexData = await pex.json();
+                        if(pexData.url) {
+                            const mediaTag = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop class="rounded-xl"></video>` : `<img src="${pexData.url}" class="rounded-xl">`;
+                            flow.innerHTML += `<div class="ai-msg p-2 mt-2">${mediaTag}</div>`;
+                            forceSave();
                         }
                     }
                 }
                 flow.scrollTop = flow.scrollHeight;
             } catch (e) {
-                flow.innerHTML += `<p class="text-red-500 text-center text-xs">Connection Timed Out</p>`;
+                flow.innerHTML += `<p class="text-red-500 text-center text-xs">Offline</p>`;
             }
         }
     </script>
