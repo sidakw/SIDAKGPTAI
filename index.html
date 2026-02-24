@@ -3,55 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIDAKGPT | PEXELS EDITION</title>
+    <title>SIDAKGPT V18</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
         .glass { background: rgba(10,10,10,0.9); backdrop-filter: blur(20px); border-top: 1px solid #333; }
-        #history-panel { transition: 0.3s ease; z-index: 100; transform: translateY(100%); }
-        .panel-open { transform: translateY(0) !important; }
+        #history-panel { transition: 0.3s ease; z-index: 100; }
+        .hidden-panel { transform: translateY(100%); }
         .ai-msg { background: #111; border: 1px solid #333; border-radius: 12px 12px 12px 0; }
         .user-msg { background: #2563eb; border-radius: 12px 12px 0 12px; }
-        img, video { max-width: 100%; border-radius: 10px; margin-top: 8px; border: 1px solid #222; }
+        img, video { max-width: 100%; border-radius: 10px; margin-top: 8px; }
     </style>
 </head>
 <body class="h-screen flex flex-col">
 
     <header class="p-4 border-b border-zinc-800 flex justify-between items-center bg-black">
         <h1 class="font-black text-xl text-blue-500">SIDAKGPT</h1>
-        <button onclick="toggleHistory(true)" class="flex items-center gap-2 bg-zinc-900 px-3 py-1 rounded-lg border border-zinc-700">
+        <button onclick="openHistory()" class="flex items-center gap-2 bg-zinc-900 px-3 py-1 rounded-lg border border-zinc-700">
             <i data-lucide="history" class="w-4 h-4 text-blue-400"></i>
-            <span class="text-xs font-bold uppercase">History</span>
+            <span class="text-xs font-bold">History</span>
         </button>
     </header>
 
     <main id="flow" class="flex-1 overflow-y-auto p-4 space-y-4 pb-40"></main>
 
-    <div id="history-panel" class="fixed inset-0 bg-black flex flex-col">
-        <div class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950">
-            <h2 class="font-bold text-blue-500">Previous Chats</h2>
-            <button onclick="toggleHistory(false)" class="p-2"><i data-lucide="x"></i></button>
+    <div id="history-panel" class="fixed inset-0 bg-black hidden-panel flex flex-col">
+        <div class="p-4 border-b border-zinc-800 flex justify-between items-center">
+            <h2 class="font-bold text-lg text-blue-500">Previous Messages</h2>
+            <button onclick="closeHistory()" class="p-2"><i data-lucide="x"></i></button>
         </div>
-        <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+        <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3">
+            </div>
         <div class="p-4 border-t border-zinc-900">
-            <button onclick="nuke()" class="w-full p-3 bg-red-600/10 text-red-500 rounded-xl text-xs border border-red-600/20">CLEAR ALL</button>
+            <button onclick="nuke()" class="w-full p-3 bg-red-600/10 text-red-500 rounded-xl text-xs border border-red-600/20">Clear All Memory</button>
         </div>
     </div>
 
     <footer class="fixed bottom-0 w-full p-4 glass">
         <div class="max-w-2xl mx-auto flex items-center gap-2">
-            <label class="p-4 bg-zinc-900 rounded-2xl border border-zinc-800 cursor-pointer">
-                <i data-lucide="paperclip"></i>
-                <input type="file" id="file" class="hidden" accept="image/*" onchange="previewImg(this)">
-            </label>
-            <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none border border-zinc-800" placeholder="Ask or send an image...">
+            <label class="p-4 bg-zinc-900 rounded-2xl border border-zinc-800"><i data-lucide="image"></i><input type="file" id="file" class="hidden" accept="image/*" onchange="previewImg(this)"></label>
+            <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none" placeholder="Ask SidakGPT...">
             <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl active:scale-95"><i data-lucide="send"></i></button>
         </div>
-        <div id="pre-box" class="hidden mt-2 p-2 bg-zinc-900 rounded-lg inline-flex items-center gap-2 border border-blue-500/30">
-            <img id="p-img" class="h-10 w-10 object-cover rounded shadow-lg">
-            <span class="text-[10px] text-zinc-400 italic font-medium">Image attached...</span>
+        <div id="pre-box" class="hidden mt-2 p-2 bg-zinc-900 rounded-lg inline-block">
+            <img id="p-img" class="h-12 w-12 object-cover rounded">
         </div>
     </footer>
 
@@ -59,32 +56,33 @@
         lucide.createIcons();
         const BRAIN_URL = "https://gptbrain.ekamsingh4293.workers.dev";
         const flow = document.getElementById('flow');
-        let memory = JSON.parse(localStorage.getItem('SIDAK_PEXELS_V21') || '[]');
+        let memory = JSON.parse(localStorage.getItem('SIDAK_MEM_V18') || '[]');
         let currentImage = null;
 
+        // LOAD CHAT ON START
         window.onload = () => {
             memory.forEach(m => renderMsg(m.role, m.text, m.media));
-            flow.scrollTop = flow.scrollHeight;
         };
 
         function renderMsg(role, text, media) {
             let html = role === 'user' ? `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%]">${text}</div></div>` :
                                        `<div class="ai-msg p-4 text-sm max-w-[90%] mt-2">${marked.parse(text)}</div>`;
-            if(media) html += `<div class="p-2 mt-1">${media}</div>`;
+            if(media) html += `<div class="ai-msg p-2 mt-2">${media}</div>`;
             flow.innerHTML += html;
             flow.scrollTop = flow.scrollHeight;
         }
 
-        function toggleHistory(open) {
-            const panel = document.getElementById('history-panel');
+        function openHistory() {
             const list = document.getElementById('history-list');
-            if(open) {
-                list.innerHTML = memory.filter(m => m.role === 'user').map(m => `<div class="p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-sm mb-2 opacity-80">"${m.text}"</div>`).join('');
-                panel.classList.add('panel-open');
-            } else { panel.classList.remove('panel-open'); }
+            list.innerHTML = "";
+            memory.filter(m => m.role === 'user').forEach(m => {
+                list.innerHTML += `<div class="p-4 bg-zinc-900 rounded-xl border border-zinc-800 text-sm mb-2 text-zinc-300">"${m.text}"</div>`;
+            });
+            document.getElementById('history-panel').classList.remove('hidden-panel');
         }
 
-        function nuke() { localStorage.removeItem('SIDAK_PEXELS_V21'); location.reload(); }
+        function closeHistory() { document.getElementById('history-panel').classList.add('hidden-panel'); }
+        function nuke() { localStorage.clear(); location.reload(); }
 
         function previewImg(input) {
             const reader = new FileReader();
@@ -102,7 +100,7 @@
             if(!txt && !currentImage) return;
 
             renderMsg('user', txt);
-            const imgToSend = currentImage;
+            const imgData = currentImage;
             currentImage = null;
             document.getElementById('pre-box').classList.add('hidden');
             input.value = "";
@@ -111,30 +109,30 @@
                 const res = await fetch(BRAIN_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: [{content: txt}], image: imgToSend })
+                    body: JSON.stringify({ messages: [{content: txt}], image: imgData })
                 });
                 const data = await res.json();
                 const ai = data.reply;
-                let mediaHtml = '';
+                let mHtml = '';
 
-                // Handle [PHOTO:topic] from Pexels
-                const match = ai.match(/\[PHOTO:(.*?)\]/i);
-                if (match) {
-                    const topic = match[1].trim();
-                    const pexRes = await fetch(BRAIN_URL, { 
-                        method: 'POST', 
-                        body: JSON.stringify({ type: "pexels", prompt: topic }) 
-                    });
-                    const pexData = await pexRes.json();
-                    if(pexData.url) {
-                        mediaHtml = `<img src="${pexData.url}" class="rounded-xl shadow-lg border border-zinc-800">`;
-                        mediaHtml += `<p class="text-[9px] text-zinc-500 mt-1 uppercase tracking-tighter">Pexels Photography</p>`;
+                const match = ai.match(/\[(PHOTO|VIDEO|DRAW):(.*?)\]/i);
+                if(match) {
+                    const type = match[1].toUpperCase();
+                    const topic = match[2].trim();
+                    if(type === 'DRAW') {
+                        mHtml = `<img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1024&height=1024">`;
+                    } else {
+                        const pex = await fetch(BRAIN_URL, { method: 'POST', body: JSON.stringify({ type: "pexels", media: type === 'VIDEO' ? "video" : "photo", prompt: topic }) });
+                        const pexData = await pex.json();
+                        if(pexData.url) mHtml = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop></video>` : `<img src="${pexData.url}">`;
                     }
                 }
 
-                renderMsg('ai', ai, mediaHtml);
-                memory.push({role: 'user', text: txt}, {role: 'ai', text: ai, media: mediaHtml});
-                localStorage.setItem('SIDAK_PEXELS_V21', JSON.stringify(memory));
+                renderMsg('ai', ai, mHtml);
+                
+                // SAVE ONLY TEXT DATA (LIGHTWEIGHT)
+                memory.push({role: 'user', text: txt}, {role: 'ai', text: ai, media: mHtml});
+                localStorage.setItem('SIDAK_MEM_V18', JSON.stringify(memory));
 
             } catch(e) { console.error(e); }
         }
