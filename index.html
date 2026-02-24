@@ -3,40 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIDAKGPT TITANIUM</title>
+    <title>SIDAKGPT PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
-        .glass { background: rgba(10,10,10,0.9); backdrop-filter: blur(20px); border-top: 1px solid #333; }
-        #flow::-webkit-scrollbar { width: 0px; }
-        .ai-msg { background: #111; border: 1px solid #333; border-radius: 12px 12px 12px 0; }
-        .user-msg { background: #2563eb; border-radius: 12px 12px 0 12px; }
+        .glass { background: rgba(10,10,10,0.95); backdrop-filter: blur(20px); border-top: 1px solid #333; }
+        #history-drawer { transition: transform 0.3s ease-in-out; }
+        .drawer-open { transform: translateX(0) !important; }
+        .ai-msg { background: #1a1a1a; border: 1px solid #333; border-radius: 15px 15px 15px 0; }
+        .user-msg { background: #2563eb; border-radius: 15px 15px 0 15px; }
         img, video { max-width: 100%; border-radius: 10px; margin-top: 8px; }
     </style>
 </head>
-<body class="h-screen flex flex-col">
+<body class="h-screen flex flex-col relative">
 
-    <header class="p-4 border-b border-zinc-800 flex justify-between items-center glass">
-        <h1 class="font-black text-xl text-blue-500">SIDAKGPT <span class="text-xs text-white opacity-20">TITANIUM</span></h1>
-        <button onclick="clearChat()"><i data-lucide="trash-2" class="w-5 text-zinc-500"></i></button>
+    <div id="history-drawer" class="fixed inset-y-0 right-0 w-64 bg-zinc-900 z-50 transform translate-x-full shadow-2xl border-l border-zinc-800 p-4">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="font-bold text-lg">Previous Chats</h2>
+            <button onclick="toggleDrawer()"><i data-lucide="x"></i></button>
+        </div>
+        <div id="history-list" class="space-y-2 overflow-y-auto h-[80vh]">
+            </div>
+        <button onclick="clearChat()" class="mt-4 w-full p-2 bg-red-600/20 text-red-500 rounded-lg text-sm border border-red-600/30">Delete All</button>
+    </div>
+
+    <header class="p-4 border-b border-zinc-800 flex justify-between items-center glass z-10">
+        <h1 class="font-black text-xl text-blue-500">SIDAKGPT</h1>
+        <button onclick="toggleDrawer()" class="p-2"><i data-lucide="more-vertical"></i></button>
     </header>
 
     <main id="flow" class="flex-1 overflow-y-auto p-4 space-y-4 pb-40"></main>
 
-    <footer class="fixed bottom-0 w-full p-4 glass">
-        <div class="max-w-2xl mx-auto space-y-2">
-            <div id="preview-box" class="hidden relative inline-block">
-                <img id="upload-preview" class="h-16 w-16 object-cover rounded-lg border-2 border-blue-500">
-            </div>
+    <footer class="fixed bottom-0 w-full p-4 glass z-10">
+        <div class="max-w-2xl mx-auto flex flex-col gap-2">
+            <div id="preview-box" class="hidden"><img id="up-pre" class="h-12 w-12 rounded border border-blue-500"></div>
             <div class="flex items-center gap-2">
-                <label class="p-4 bg-zinc-900 rounded-2xl border border-zinc-800 cursor-pointer">
-                    <i data-lucide="image"></i>
-                    <input type="file" id="file" class="hidden" accept="image/*" onchange="handleFile(this)">
-                </label>
-                <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none border border-zinc-800" placeholder="Chat history fixed...">
-                <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl active:scale-90"><i data-lucide="send"></i></button>
+                <label class="p-4 bg-zinc-900 rounded-2xl border border-zinc-800"><i data-lucide="plus"></i><input type="file" id="file" class="hidden" accept="image/*" onchange="preview(this)"></label>
+                <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none" placeholder="Chat is saved automatically...">
+                <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl"><i data-lucide="send"></i></button>
             </div>
         </div>
     </footer>
@@ -45,43 +51,46 @@
         lucide.createIcons();
         const BRAIN_URL = "https://gptbrain.ekamsingh4293.workers.dev";
         const flow = document.getElementById('flow');
-        let chatHistory = [];
         let currentImage = null;
 
-        // --- 1. LOAD HISTORY ON START ---
+        // LOAD HISTORY
         window.onload = () => {
-            const saved = localStorage.getItem('SIDAK_TITANIUM_DATA');
+            const saved = localStorage.getItem('SIDAK_PRO_CHAT');
             if (saved) {
-                chatHistory = JSON.parse(saved);
-                renderHistory();
+                flow.innerHTML = saved;
+                flow.scrollTop = flow.scrollHeight;
+                updateDrawerList();
             }
         };
 
-        function renderHistory() {
-            flow.innerHTML = '';
-            chatHistory.forEach(msg => {
-                if (msg.role === 'user') {
-                    flow.innerHTML += `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%]">${msg.text}</div></div>`;
-                } else {
-                    flow.innerHTML += `<div class="ai-msg p-4 text-sm max-w-[90%] mt-2">${marked.parse(msg.text)}</div>`;
-                    if (msg.media) {
-                        flow.innerHTML += `<div class="ai-msg p-2 mt-2 border-zinc-800 border">${msg.media}</div>`;
-                    }
-                }
+        function toggleDrawer() {
+            document.getElementById('history-drawer').classList.toggle('drawer-open');
+            updateDrawerList();
+        }
+
+        function updateDrawerList() {
+            const list = document.getElementById('history-list');
+            const userMsgs = flow.querySelectorAll('.user-msg');
+            list.innerHTML = "";
+            userMsgs.forEach((msg, i) => {
+                const item = document.createElement('div');
+                item.className = "p-3 bg-zinc-800 rounded-lg text-xs truncate cursor-pointer hover:bg-zinc-700";
+                item.innerText = msg.innerText;
+                item.onclick = () => { toggleDrawer(); msg.scrollIntoView({behavior: 'smooth'}); };
+                list.appendChild(item);
             });
-            flow.scrollTop = flow.scrollHeight;
         }
 
         function clearChat() {
-            localStorage.removeItem('SIDAK_TITANIUM_DATA');
+            localStorage.removeItem('SIDAK_PRO_CHAT');
             location.reload();
         }
 
-        function handleFile(input) {
+        function preview(input) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 currentImage = e.target.result;
-                document.getElementById('upload-preview').src = currentImage;
+                document.getElementById('up-pre').src = currentImage;
                 document.getElementById('preview-box').classList.remove('hidden');
             };
             reader.readAsDataURL(input.files[0]);
@@ -92,48 +101,33 @@
             const txt = input.value.trim();
             if (!txt && !currentImage) return;
 
-            // Add to Data Array
-            chatHistory.push({ role: 'user', text: txt });
-            renderHistory();
+            let html = `<div class="flex flex-col items-end gap-1">`;
+            if (currentImage) html += `<img src="${currentImage}" class="w-32">`;
+            html += `<div class="user-msg p-3 text-sm max-w-[80%]">${txt}</div></div>`;
+            flow.innerHTML += html;
             
-            const imgData = currentImage;
+            const imgSave = currentImage;
             currentImage = null;
             document.getElementById('preview-box').classList.add('hidden');
             input.value = "";
+            flow.scrollTop = flow.scrollHeight;
 
             try {
                 const res = await fetch(BRAIN_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: [{content: txt}], image: imgData })
+                    body: JSON.stringify({ messages: [{content: txt}], image: imgSave })
                 });
-
                 const data = await res.json();
-                const ai = data.reply;
-                let mediaHtml = '';
-
-                // Check for media
-                const match = ai.match(/\[(PHOTO|VIDEO|DRAW):(.*?)\]/i);
-                if (match) {
-                    const type = match[1].toUpperCase();
-                    const topic = match[2].trim();
-                    if (type === 'DRAW') {
-                        mediaHtml = `<img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1024&height=1024" class="rounded-lg">`;
-                    } else {
-                        const pex = await fetch(BRAIN_URL, { method: 'POST', body: JSON.stringify({ type: "pexels", media: type === 'VIDEO' ? "video" : "photo", prompt: topic }) });
-                        const pexData = await pex.json();
-                        if (pexData.url) {
-                            mediaHtml = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop class="rounded-lg"></video>` : `<img src="${pexData.url}" class="rounded-lg">`;
-                        }
-                    }
-                }
-
-                chatHistory.push({ role: 'ai', text: ai, media: mediaHtml });
-                localStorage.setItem('SIDAK_TITANIUM_DATA', JSON.stringify(chatHistory));
-                renderHistory();
-            } catch (e) {
-                console.log("Error");
-            }
+                flow.innerHTML += `<div class="ai-msg p-4 text-sm max-w-[90%] mt-2">${marked.parse(data.reply)}</div>`;
+                
+                // Save to storage (remove base64 to save space)
+                const clone = flow.cloneNode(true);
+                clone.querySelectorAll('img[src^="data:"]').forEach(img => img.remove());
+                localStorage.setItem('SIDAK_PRO_CHAT', clone.innerHTML);
+                
+                flow.scrollTop = flow.scrollHeight;
+            } catch (e) { console.log(e); }
         }
     </script>
 </body>
