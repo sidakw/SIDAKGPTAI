@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIDAKGPT V9</title>
+    <title>SIDAKGPT V10</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -18,16 +18,16 @@
 <body class="h-screen flex flex-col">
 
     <header class="p-4 border-b border-zinc-900 flex justify-between items-center glass">
-        <h1 class="font-black text-xl text-blue-500">SIDAKGPT <span class="text-[10px] text-white opacity-50">V9</span></h1>
-        <button onclick="localStorage.clear(); location.reload();"><i data-lucide="trash-2"></i></button>
+        <h1 class="font-black text-xl text-blue-500">SIDAKGPT <span class="text-[10px] text-white opacity-50">STABLE</span></h1>
+        <button onclick="localStorage.clear(); location.reload();"><i data-lucide="trash-2" class="text-zinc-600"></i></button>
     </header>
 
     <main id="flow" class="flex-1 overflow-y-auto p-4 space-y-4 pb-32"></main>
 
     <footer class="fixed bottom-0 w-full p-4 glass">
         <div class="max-w-2xl mx-auto flex items-center gap-2">
-            <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none" placeholder="Send a photo of...">
-            <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl"><i data-lucide="send"></i></button>
+            <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none border border-zinc-800 focus:border-blue-500" placeholder="Type 'Send a photo of a forest'...">
+            <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl active:scale-90"><i data-lucide="send"></i></button>
         </div>
     </footer>
 
@@ -35,28 +35,30 @@
         lucide.createIcons();
         const BRAIN_URL = "https://gptbrain.ekamsingh4293.workers.dev";
 
-        // --- HISTORY LOGIC ---
+        // --- THE "STABLE" HISTORY LOGIC ---
+        const flow = document.getElementById('flow');
+        
         window.onload = () => {
-            const data = localStorage.getItem('SIDAK_FINAL');
-            if(data) {
-                document.getElementById('flow').innerHTML = data;
-                document.getElementById('flow').scrollTop = document.getElementById('flow').scrollHeight;
+            const savedData = localStorage.getItem('SIDAK_STABLE_CHAT');
+            if(savedData) {
+                flow.innerHTML = savedData;
+                flow.scrollTop = flow.scrollHeight;
             }
         };
 
-        function saveHistory() {
-            const content = document.getElementById('flow').innerHTML;
-            localStorage.setItem('SIDAK_FINAL', content);
-        }
+        // Auto-save history every 2 seconds
+        setInterval(() => {
+            if (flow.innerHTML.length > 0) {
+                localStorage.setItem('SIDAK_STABLE_CHAT', flow.innerHTML);
+            }
+        }, 2000);
 
         async function run() {
             const input = document.getElementById('prompt');
-            const flow = document.getElementById('flow');
             const txt = input.value.trim();
             if(!txt) return;
 
-            // Add User Msg
-            flow.innerHTML += `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%]">${txt}</div></div>`;
+            flow.innerHTML += `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%] shadow-lg">${txt}</div></div>`;
             input.value = "";
             flow.scrollTop = flow.scrollHeight;
 
@@ -70,35 +72,33 @@
                 const data = await res.json();
                 const ai = data.reply;
 
-                // 1. Show Text
+                // 1. Render text normally
                 flow.innerHTML += `<div class="ai-msg p-4 text-sm max-w-[90%] mt-2">${marked.parse(ai)}</div>`;
 
-                // 2. Look for Photos/Art
-                const reg = /\[(DRAW|PHOTO|VIDEO):(.*?)\]/i;
-                const match = ai.match(reg);
+                // 2. Stronger Tag Hunter
+                const tags = ai.match(/\[(DRAW|PHOTO|VIDEO):(.*?)\]/gi);
                 
-                if (match) {
-                    const type = match[1].toUpperCase();
-                    const topic = match[2].trim();
-                    
-                    if (type === 'DRAW') {
-                        flow.innerHTML += `<div class="ai-msg p-2 mt-2"><img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1024&height=1024" class="rounded-xl"></div>`;
-                        saveHistory();
-                    } else {
-                        const pex = await fetch(BRAIN_URL, { method: 'POST', body: JSON.stringify({ type: "pexels", media: type === 'VIDEO' ? "video" : "photo", prompt: topic }) });
-                        const pexData = await pex.json();
-                        if(pexData.url) {
-                            const media = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop class="rounded-xl"></video>` : `<img src="${pexData.url}" class="rounded-xl">`;
-                            flow.innerHTML += `<div class="ai-msg p-2 mt-2">${media}</div>`;
-                            saveHistory();
+                if (tags) {
+                    for (let tag of tags) {
+                        const parts = tag.replace('[', '').replace(']', '').split(':');
+                        const type = parts[0].toUpperCase();
+                        const topic = parts[1].trim();
+
+                        if (type === 'DRAW') {
+                            flow.innerHTML += `<div class="ai-msg p-2 mt-2 border-blue-900 border"><img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1024&height=1024" class="rounded-xl w-full"></div>`;
+                        } else {
+                            const pex = await fetch(BRAIN_URL, { method: 'POST', body: JSON.stringify({ type: "pexels", media: type === 'VIDEO' ? "video" : "photo", prompt: topic }) });
+                            const pexData = await pex.json();
+                            if(pexData.url) {
+                                const media = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop class="rounded-xl w-full"></video>` : `<img src="${pexData.url}" class="rounded-xl w-full">`;
+                                flow.innerHTML += `<div class="ai-msg p-2 mt-2 border-zinc-800 border">${media}</div>`;
+                            }
                         }
                     }
                 }
-                
-                saveHistory();
                 flow.scrollTop = flow.scrollHeight;
             } catch (e) {
-                console.log("Error");
+                flow.innerHTML += `<p class="text-red-500 text-center text-xs">Connection Timed Out</p>`;
             }
         }
     </script>
