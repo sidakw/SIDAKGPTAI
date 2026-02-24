@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIDAKGPT V16</title>
+    <title>SIDAKGPT TITANIUM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -19,7 +19,7 @@
 <body class="h-screen flex flex-col">
 
     <header class="p-4 border-b border-zinc-800 flex justify-between items-center glass">
-        <h1 class="font-black text-xl text-blue-500">SIDAKGPT <span class="text-xs text-white opacity-20">V16</span></h1>
+        <h1 class="font-black text-xl text-blue-500">SIDAKGPT <span class="text-xs text-white opacity-20">TITANIUM</span></h1>
         <button onclick="clearChat()"><i data-lucide="trash-2" class="w-5 text-zinc-500"></i></button>
     </header>
 
@@ -29,14 +29,13 @@
         <div class="max-w-2xl mx-auto space-y-2">
             <div id="preview-box" class="hidden relative inline-block">
                 <img id="upload-preview" class="h-16 w-16 object-cover rounded-lg border-2 border-blue-500">
-                <button onclick="cancelImg()" class="absolute -top-2 -right-2 bg-red-600 rounded-full p-1"><i data-lucide="x" class="w-3 h-3"></i></button>
             </div>
             <div class="flex items-center gap-2">
                 <label class="p-4 bg-zinc-900 rounded-2xl border border-zinc-800 cursor-pointer">
                     <i data-lucide="image"></i>
                     <input type="file" id="file" class="hidden" accept="image/*" onchange="handleFile(this)">
                 </label>
-                <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none border border-zinc-800" placeholder="Type here...">
+                <input id="prompt" class="flex-1 bg-zinc-900 p-4 rounded-2xl outline-none border border-zinc-800" placeholder="Chat history fixed...">
                 <button onclick="run()" class="bg-blue-600 p-4 rounded-2xl active:scale-90"><i data-lucide="send"></i></button>
             </div>
         </div>
@@ -46,39 +45,35 @@
         lucide.createIcons();
         const BRAIN_URL = "https://gptbrain.ekamsingh4293.workers.dev";
         const flow = document.getElementById('flow');
+        let chatHistory = [];
         let currentImage = null;
 
-        // --- 1. LOAD HISTORY (Safe Method) ---
+        // --- 1. LOAD HISTORY ON START ---
         window.onload = () => {
-            try {
-                const saved = localStorage.getItem('SIDAK_STABLE_V16');
-                if (saved) {
-                    flow.innerHTML = saved;
-                    flow.scrollTop = flow.scrollHeight;
-                }
-            } catch (e) { console.error("History Load Failed"); }
+            const saved = localStorage.getItem('SIDAK_TITANIUM_DATA');
+            if (saved) {
+                chatHistory = JSON.parse(saved);
+                renderHistory();
+            }
         };
 
-        // --- 2. THE "SCRUBBER" SAVE ---
-        function saveChat() {
-            // Create a temporary version of the chat
-            const clone = flow.cloneNode(true);
-            // Find all uploaded images (base64) and remove them to save space
-            const base64Images = clone.querySelectorAll('img[src^="data:image"]');
-            base64Images.forEach(img => {
-                img.src = "https://via.placeholder.com/150?text=Uploaded+Photo";
+        function renderHistory() {
+            flow.innerHTML = '';
+            chatHistory.forEach(msg => {
+                if (msg.role === 'user') {
+                    flow.innerHTML += `<div class="flex justify-end"><div class="user-msg p-3 text-sm max-w-[80%]">${msg.text}</div></div>`;
+                } else {
+                    flow.innerHTML += `<div class="ai-msg p-4 text-sm max-w-[90%] mt-2">${marked.parse(msg.text)}</div>`;
+                    if (msg.media) {
+                        flow.innerHTML += `<div class="ai-msg p-2 mt-2 border-zinc-800 border">${msg.media}</div>`;
+                    }
+                }
             });
-
-            try {
-                localStorage.setItem('SIDAK_STABLE_V16', clone.innerHTML);
-            } catch (e) {
-                console.log("Memory Full. Clearing oldest messages.");
-                localStorage.clear();
-            }
+            flow.scrollTop = flow.scrollHeight;
         }
 
         function clearChat() {
-            localStorage.removeItem('SIDAK_STABLE_V16');
+            localStorage.removeItem('SIDAK_TITANIUM_DATA');
             location.reload();
         }
 
@@ -92,26 +87,19 @@
             reader.readAsDataURL(input.files[0]);
         }
 
-        function cancelImg() {
-            currentImage = null;
-            document.getElementById('preview-box').classList.add('hidden');
-        }
-
         async function run() {
             const input = document.getElementById('prompt');
             const txt = input.value.trim();
             if (!txt && !currentImage) return;
 
-            let userHtml = `<div class="flex flex-col items-end gap-2">`;
-            if (currentImage) userHtml += `<img src="${currentImage}" class="w-48 rounded-lg shadow-lg">`;
-            userHtml += `<div class="user-msg p-3 text-sm max-w-[80%]">${txt}</div></div>`;
-            flow.innerHTML += userHtml;
+            // Add to Data Array
+            chatHistory.push({ role: 'user', text: txt });
+            renderHistory();
             
             const imgData = currentImage;
-            cancelImg();
+            currentImage = null;
+            document.getElementById('preview-box').classList.add('hidden');
             input.value = "";
-            flow.scrollTop = flow.scrollHeight;
-            saveChat(); // Save user message
 
             try {
                 const res = await fetch(BRAIN_URL, {
@@ -122,28 +110,29 @@
 
                 const data = await res.json();
                 const ai = data.reply;
+                let mediaHtml = '';
 
-                flow.innerHTML += `<div class="ai-msg p-4 text-sm max-w-[90%] mt-2">${marked.parse(ai)}</div>`;
-                
+                // Check for media
                 const match = ai.match(/\[(PHOTO|VIDEO|DRAW):(.*?)\]/i);
                 if (match) {
                     const type = match[1].toUpperCase();
                     const topic = match[2].trim();
                     if (type === 'DRAW') {
-                        flow.innerHTML += `<div class="ai-msg p-2 mt-2"><img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1024&height=1024" class="rounded-lg"></div>`;
+                        mediaHtml = `<img src="https://pollinations.ai/p/${encodeURIComponent(topic)}?width=1024&height=1024" class="rounded-lg">`;
                     } else {
                         const pex = await fetch(BRAIN_URL, { method: 'POST', body: JSON.stringify({ type: "pexels", media: type === 'VIDEO' ? "video" : "photo", prompt: topic }) });
                         const pexData = await pex.json();
                         if (pexData.url) {
-                            const media = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop class="rounded-lg"></video>` : `<img src="${pexData.url}" class="rounded-lg">`;
-                            flow.innerHTML += `<div class="ai-msg p-2 mt-2">${media}</div>`;
+                            mediaHtml = type === 'VIDEO' ? `<video src="${pexData.url}" controls autoplay muted loop class="rounded-lg"></video>` : `<img src="${pexData.url}" class="rounded-lg">`;
                         }
                     }
                 }
-                saveChat(); // Save AI message
-                flow.scrollTop = flow.scrollHeight;
+
+                chatHistory.push({ role: 'ai', text: ai, media: mediaHtml });
+                localStorage.setItem('SIDAK_TITANIUM_DATA', JSON.stringify(chatHistory));
+                renderHistory();
             } catch (e) {
-                flow.innerHTML += `<p class="text-red-500 text-center text-xs">Offline</p>`;
+                console.log("Error");
             }
         }
     </script>
