@@ -3,88 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>SidakGPT</title>
+    <title>SidakGPT OS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap');
-        
-        :root {
-            --gemini-blue: #8ab4f8;
-            --bg-main: #131314;
-            --bg-sidebar: #1e1f20;
-        }
-
-        body { background: var(--bg-main); color: #e3e3e3; font-family: 'Google Sans', sans-serif; overflow: hidden; }
-        .blue-brand { color: var(--gemini-blue); }
-
-        /* PROFESSIONAL SIDAK LOGO (SVG) */
-        .sidak-icon {
-            width: 30px;
-            height: 30px;
-            flex-shrink: 0;
-            filter: drop-shadow(0 0 4px rgba(138, 180, 248, 0.4));
-        }
-
-        .sidebar { background: var(--bg-sidebar); width: 280px; transition: 0.3s; position: fixed; height: 100vh; z-index: 100; left: -280px; }
+        body { background: #131314; color: #e3e3e3; font-family: 'Google Sans', sans-serif; overflow: hidden; }
+        .gemini-blue { color: #8ab4f8; }
+        .sidebar { background: #1e1f20; width: 280px; transition: 0.3s; position: fixed; height: 100vh; z-index: 100; left: -280px; border-right: 1px solid #333; }
         .sidebar.open { left: 0; }
-        
-        .user-msg-box { background: #2b2d31; border-radius: 22px; padding: 14px 24px; max-width: 85%; margin-left: auto; font-size: 15px; }
-        .ai-row { display: flex; gap: 20px; margin-top: 32px; align-items: flex-start; }
-        
-        .input-pill { background: var(--bg-sidebar); border-radius: 30px; border: 1px solid #3c4043; transition: 0.2s; }
-        .input-pill:focus-within { border-color: #5f6368; background: #282a2d; }
-        
+        .chat-item { padding: 10px; border-radius: 8px; cursor: pointer; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: 0.2s; }
+        .chat-item:hover { background: #3c4043; }
+        .input-pill { background: #1e1f20; border-radius: 32px; border: 1px solid #3c4043; }
+        .ai-row { display: flex; gap: 20px; margin-top: 35px; border-left: 2px solid #333; padding-left: 20px; }
+        .s-spark { width: 30px; height: 30px; filter: drop-shadow(0 0 5px #8ab4f8); }
+        .user-bubble { background: #2b2d31; border-radius: 24px; padding: 12px 24px; max-width: 80%; margin-left: auto; }
+        pre { border-radius: 12px !important; background: #000 !important; border: 1px solid #333; position: relative; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .loader { height: 4px; width: 100%; background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); background-size: 200% 100%; animation: pulse 1.5s infinite; display: none; border-radius: 2px; }
+        .loader { height: 3px; width: 100%; background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); background-size: 200% 100%; animation: pulse 1.5s infinite; display: none; }
         @keyframes pulse { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
-
-        .welcome-text { background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     </style>
 </head>
-<body class="flex">
+<body class="flex" onload="loadHistory()">
 
-    <nav id="sidebar" class="sidebar flex flex-col p-4 shadow-2xl">
-        <div class="flex items-center gap-3 mb-8 p-2">
-            <button onclick="toggleSide()"><i data-lucide="menu"></i></button>
-            <span class="font-bold text-lg">SidakGPT</span>
+    <nav id="sidebar" class="sidebar p-4 flex flex-col">
+        <div class="flex items-center justify-between mb-8">
+            <span class="font-medium">Recent Chats</span>
+            <i data-lucide="x" onclick="toggleSide()" class="cursor-pointer"></i>
         </div>
-        <button onclick="location.reload()" class="flex items-center gap-4 bg-[#2b2d31] p-4 rounded-full text-sm font-medium hover:bg-[#3c4043] transition">
-            <i data-lucide="plus" class="w-5 h-5"></i> New Chat
+        <button onclick="newChat()" class="bg-[#2b2d31] hover:bg-zinc-700 p-4 rounded-full flex items-center gap-3 mb-6 transition">
+            <i data-lucide="plus"></i> New Chat
         </button>
+        <div id="history-list" class="flex-1 overflow-y-auto no-scrollbar space-y-2">
+            </div>
     </nav>
 
     <div class="flex-1 flex flex-col h-screen relative">
-        <header class="p-4 flex items-center justify-between bg-[#131314]/80 backdrop-blur-md sticky top-0 z-10">
-            <button onclick="toggleSide()" class="p-2 hover:bg-zinc-800 rounded-full transition"><i data-lucide="menu"></i></button>
-            <div class="absolute left-1/2 transform -translate-x-1/2 text-xl font-medium blue-brand">SidakGPT</div>
-            <div class="sidak-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="#8ab4f8"/>
-                </svg>
-            </div>
+        <header class="p-4 flex items-center justify-between sticky top-0 bg-[#131314]/90 backdrop-blur-md z-50">
+            <i data-lucide="menu" onclick="toggleSide()" class="cursor-pointer"></i>
+            <div class="absolute left-1/2 transform -translate-x-1/2 text-xl font-medium gemini-blue">SidakGPT</div>
+            <div class="s-spark"><svg viewBox="0 0 24 24" fill="#8ab4f8"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg></div>
         </header>
 
-        <main id="flow" class="flex-1 overflow-y-auto px-4 md:px-56 py-8 no-scrollbar">
-            <div id="welcome" class="mt-40 text-center animate-pulse">
-                <h1 class="text-5xl font-medium welcome-text pb-4">Hello, Sidak</h1>
-                <p class="text-zinc-500 text-xl">How can I help you today?</p>
+        <main id="flow" class="flex-1 overflow-y-auto px-4 md:px-64 py-10 no-scrollbar">
+            <div id="welcome" class="mt-40 text-center">
+                <h1 class="text-5xl font-medium bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 bg-clip-text text-transparent pb-4">Hello, Sidak</h1>
+                <p class="text-zinc-500 text-xl">Your conversations are safe with SidakGPT.</p>
             </div>
         </main>
 
-        <footer class="p-4 md:px-56 pb-12 bg-[#131314]">
-            <div id="loader" class="loader mb-4"></div>
-            
-            <div class="input-pill flex items-center px-5 py-1 gap-4 shadow-xl">
-                <label class="p-2 hover:bg-zinc-700 rounded-full cursor-pointer transition">
-                    <i data-lucide="image" class="w-6 h-6 text-zinc-400"></i>
-                    <input type="file" id="file" class="hidden" accept="image/*" onchange="preview(this)">
-                </label>
-                <input id="prompt" class="flex-1 bg-transparent py-4 outline-none text-white text-[16px]" placeholder="Ask SidakGPT anything...">
-                <button onclick="run()" class="text-[#8ab4f8] p-2 hover:bg-zinc-700 rounded-full transition">
-                    <i data-lucide="send-horizontal" class="w-6 h-6"></i>
-                </button>
+        <footer class="p-6 md:px-64 pb-12">
+            <div id="loader" class="loader mb-4 rounded-full"></div>
+            <div class="input-pill flex items-center px-6 py-1 gap-4">
+                <input id="prompt" class="flex-1 bg-transparent py-5 outline-none text-white" placeholder="Message SidakGPT...">
+                <button onclick="run()" class="text-blue-400"><i data-lucide="send-horizontal" class="w-7 h-7"></i></button>
             </div>
         </footer>
     </div>
@@ -92,12 +67,54 @@
     <script>
         lucide.createIcons();
         const BRAIN = "https://gptbrain.ekamsingh4293.workers.dev";
-        const flow = document.getElementById('flow');
-        
-        // Professional SVG Icon for the AI
-        const sidakLogoSvg = `<div class="sidak-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="#8ab4f8"/></svg></div>`;
+        let currentChatId = null;
 
         function toggleSide() { document.getElementById('sidebar').classList.toggle('open'); }
+
+        function newChat() {
+            currentChatId = Date.now();
+            document.getElementById('flow').innerHTML = '<div id="welcome" class="mt-40 text-center"><h1 class="text-5xl font-medium text-white pb-4">New Chat</h1></div>';
+            toggleSide();
+        }
+
+        function saveMessage(role, text) {
+            if (!currentChatId) currentChatId = Date.now();
+            let history = JSON.parse(localStorage.getItem('sidak_history') || '{}');
+            if (!history[currentChatId]) history[currentChatId] = { title: text.substring(0, 30), messages: [] };
+            history[currentChatId].messages.push({ role, text });
+            localStorage.setItem('sidak_history', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            const list = document.getElementById('history-list');
+            const history = JSON.parse(localStorage.getItem('sidak_history') || '{}');
+            list.innerHTML = '';
+            Object.keys(history).reverse().forEach(id => {
+                const item = document.createElement('div');
+                item.className = 'chat-item';
+                item.innerText = history[id].title;
+                item.onclick = () => openChat(id);
+                list.appendChild(item);
+            });
+        }
+
+        function openChat(id) {
+            currentChatId = id;
+            const history = JSON.parse(localStorage.getItem('sidak_history'));
+            const flow = document.getElementById('flow');
+            document.getElementById('welcome').style.display = 'none';
+            flow.innerHTML = '';
+            history[id].messages.forEach(msg => {
+                if(msg.role === 'user') {
+                    flow.innerHTML += `<div class="flex justify-end my-8"><div class="user-bubble">${msg.text}</div></div>`;
+                } else {
+                    flow.innerHTML += `<div class="ai-row"><div class="s-spark"><svg viewBox="0 0 24 24" fill="#8ab4f8"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg></div><div class="flex-1">${marked.parse(msg.text)}</div></div>`;
+                }
+            });
+            toggleSide();
+            Prism.highlightAll();
+        }
 
         async function run() {
             const input = document.getElementById('prompt');
@@ -107,24 +124,20 @@
             document.getElementById('welcome').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
             
-            // USER
-            flow.innerHTML += `<div class="flex justify-end my-8"><div class="user-msg-box shadow-md">${txt}</div></div>`;
+            flow.innerHTML += `<div class="flex justify-end my-8"><div class="user-bubble">${txt}</div></div>`;
+            saveMessage('user', txt);
             input.value = "";
-            flow.scrollTop = flow.scrollHeight;
 
             try {
                 const res = await fetch(BRAIN, { method: 'POST', body: JSON.stringify({ messages: [{content: txt}] }) });
                 const data = await res.json();
                 document.getElementById('loader').style.display = 'none';
                 
-                // AI RESPONSE
-                flow.innerHTML += `
-                    <div class="ai-row">
-                        ${sidakLogoSvg}
-                        <div class="flex-1 text-[#e3e3e3] leading-loose text-[15px]">
-                            ${marked.parse(data.reply)}
-                        </div>
-                    </div>`;
+                const reply = data.reply;
+                flow.innerHTML += `<div class="ai-row"><div class="s-spark"><svg viewBox="0 0 24 24" fill="#8ab4f8"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg></div><div class="flex-1">${marked.parse(reply)}</div></div>`;
+                saveMessage('ai', reply);
+                
+                Prism.highlightAll();
                 flow.scrollTop = flow.scrollHeight;
             } catch(e) { document.getElementById('loader').style.display = 'none'; }
         }
