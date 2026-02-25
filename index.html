@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>SidakGPT</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -10,59 +10,83 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap');
         body { background: #131314; color: #e3e3e3; font-family: 'Google Sans', sans-serif; overflow: hidden; }
-        .gemini-gradient { background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .input-bar { background: #1e1f20; border-radius: 32px; border: 1px solid #3c4043; transition: 0.2s; }
-        .input-bar:focus-within { background: #282a2d; border-color: #5f6368; }
+        
+        /* The exact Gemini Blue from your title */
+        .gemini-blue { color: #8ab4f8; }
+        
+        .input-bar { background: #1e1f20; border-radius: 28px; border: 1px solid #3c4043; }
         .sidebar { background: #1e1f20; width: 280px; transition: 0.3s; position: fixed; height: 100vh; z-index: 100; left: -280px; }
         .sidebar.open { left: 0; }
-        .loader { height: 4px; width: 100%; background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); background-size: 200% 100%; animation: pulse 1.5s infinite; display: none; }
-        @keyframes pulse { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+        
+        .user-bubble { background: #2b2d31; border-radius: 20px; padding: 12px 20px; max-width: 85%; }
+        
+        .ai-container { display: flex; gap: 16px; margin-top: 24px; }
+        
+        /* Custom "S" Star Avatar with Bluish Theme */
+        .ai-avatar { 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 50%; 
+            flex-shrink: 0; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1e1f20; /* Dark inner circle */
+            border: 1.5px solid #8ab4f8; /* Glowing Blue border */
+            box-shadow: 0 0 10px rgba(138, 180, 248, 0.2); /* Soft blue glow */
+            color: #8ab4f8;
+            font-weight: 500;
+            font-size: 16px;
+        }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .loader-bar { height: 4px; width: 100%; background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); background-size: 200% 100%; animation: pulse 1.5s infinite; display: none; }
+        @keyframes pulse { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
     </style>
 </head>
 <body class="flex">
 
     <nav id="sidebar" class="sidebar flex flex-col p-4 shadow-2xl">
         <div class="flex items-center gap-3 mb-8 p-2">
-            <button onclick="toggleSide()" class="lg:hidden"><i data-lucide="menu"></i></button>
-            <span class="font-bold text-lg">SIDAKGPT</span>
+            <button onclick="toggleSide()"><i data-lucide="menu"></i></button>
+            <span class="font-bold text-lg">Menu</span>
         </div>
         <button onclick="location.reload()" class="flex items-center gap-3 bg-[#2b2d31] p-4 rounded-full text-sm font-medium hover:bg-[#3c4043]">
             <i data-lucide="plus"></i> New Chat
         </button>
-        <div id="hist" class="flex-1 mt-6 overflow-y-auto no-scrollbar space-y-2 text-zinc-400 text-sm"></div>
     </nav>
 
     <div class="flex-1 flex flex-col h-screen relative">
-        <header class="p-4 flex justify-between items-center">
+        <header class="p-4 flex items-center justify-between bg-[#131314] sticky top-0 z-10">
             <button onclick="toggleSide()" class="p-2 hover:bg-zinc-800 rounded-full"><i data-lucide="menu"></i></button>
-            <div class="font-medium text-lg">SidakGPT</div>
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-red-400"></div>
+            <div class="absolute left-1/2 transform -translate-x-1/2 text-xl font-medium gemini-blue">SidakGPT</div>
+            <div class="ai-avatar">S</div>
         </header>
 
-        <main id="flow" class="flex-1 overflow-y-auto px-4 md:px-32 no-scrollbar">
-            <div id="welcome" class="mt-32 text-center">
-                <h1 class="text-5xl font-medium gemini-gradient pb-4">Hello, Sidak.</h1>
+        <main id="flow" class="flex-1 overflow-y-auto px-4 md:px-48 py-6 no-scrollbar">
+            <div id="welcome" class="mt-40 text-center">
+                <h1 class="text-5xl font-medium bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 bg-clip-text text-transparent pb-4">Hello, Sidak</h1>
                 <p class="text-zinc-500 text-xl">How can I help you today?</p>
             </div>
         </main>
 
-        <footer class="p-4 md:px-32 pb-8">
-            <div id="loader" class="loader mb-2 rounded"></div>
+        <footer class="p-4 md:px-48 pb-10 bg-[#131314]">
+            <div id="loader" class="loader-bar mb-3 rounded"></div>
             <div id="pre" class="hidden mb-3 p-2 bg-zinc-800 rounded-xl inline-flex items-center gap-2 border border-blue-500/30">
                 <img id="p-img" class="h-10 w-10 object-cover rounded">
-                <button onclick="clearImg()" class="text-zinc-500"><i data-lucide="x" class="w-4 h-4"></i></button>
+                <button onclick="clearImg()"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             
-            <div class="input-bar flex items-center px-4 py-1 gap-3">
+            <div class="input-bar flex items-center px-4 py-1 gap-3 shadow-2xl">
                 <label class="p-2 hover:bg-zinc-700 rounded-full cursor-pointer transition">
                     <i data-lucide="image" class="w-6 h-6 text-zinc-400"></i>
                     <input type="file" id="file" class="hidden" accept="image/*" onchange="preview(this)">
                 </label>
-                <input id="prompt" class="flex-1 bg-transparent py-4 outline-none text-white" placeholder="Enter a prompt here">
-                <button onclick="run()" class="text-blue-500 p-2 hover:bg-zinc-700 rounded-full"><i data-lucide="send-horizontal"></i></button>
+                <input id="prompt" class="flex-1 bg-transparent py-4 outline-none text-white text-md" placeholder="Enter a prompt here">
+                <button onclick="run()" class="text-[#8ab4f8] p-2 hover:bg-zinc-700 rounded-full transition">
+                    <i data-lucide="send-horizontal" class="w-6 h-6"></i>
+                </button>
             </div>
-            <p class="text-[10px] text-center mt-3 text-zinc-500">SidakGPT can visualize real photos and videos. Built by Sidak.</p>
         </footer>
     </div>
 
@@ -87,7 +111,7 @@
 
             document.getElementById('welcome').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
-            flow.innerHTML += `<div class="text-right ml-auto bg-[#2b2d31] p-4 rounded-2xl max-w-[80%] my-4">${txt}</div>`;
+            flow.innerHTML += `<div class="flex justify-end my-6"><div class="user-bubble text-sm md:text-md">${txt}</div></div>`;
             const sendImg = currentImg; clearImg(); input.value = "";
             flow.scrollTop = flow.scrollHeight;
 
@@ -101,15 +125,23 @@
                 if(match) {
                     const type = match[1].toLowerCase();
                     const topic = match[2].trim();
-                    if(type === 'draw') media = `<img src="https://image.pollinations.ai/prompt/${encodeURIComponent(topic)}?nologo=true" class="rounded-2xl mt-4">`;
+                    if(type === 'draw') media = `<img src="https://image.pollinations.ai/prompt/${encodeURIComponent(topic)}?nologo=true" class="rounded-2xl mt-4 max-w-full shadow-lg">`;
                     else {
                         const pRes = await fetch(BRAIN, { method: 'POST', body: JSON.stringify({ type: 'pexels', media: type, prompt: topic }) });
                         const pData = await pRes.json();
-                        media = type === 'video' ? `<video src="${pData.url}" controls autoplay muted loop class="rounded-2xl mt-4"></video>` : `<img src="${pData.url}" class="rounded-2xl mt-4">`;
+                        media = type === 'video' ? `<video src="${pData.url}" controls autoplay muted loop class="rounded-2xl mt-4 max-w-full shadow-lg"></video>` : `<img src="${pData.url}" class="rounded-2xl mt-4 max-w-full shadow-lg">`;
                     }
                 }
 
-                flow.innerHTML += `<div class="flex gap-4 my-6"><div class="w-8 h-8 rounded-full bg-blue-600 shrink-0"></div><div class="prose prose-invert prose-sm">${marked.parse(ai)} ${media}</div></div>`;
+                flow.innerHTML += `
+                    <div class="ai-container">
+                        <div class="ai-avatar">S</div>
+                        <div class="flex-1">
+                            <div class="prose prose-invert prose-sm leading-relaxed text-[#e3e3e3]">${marked.parse(ai)}</div>
+                            ${media}
+                        </div>
+                    </div>
+                `;
                 flow.scrollTop = flow.scrollHeight;
             } catch(e) { document.getElementById('loader').style.display = 'none'; }
         }
