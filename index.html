@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SidakGPT Pro</title>
+    <title>SidakGPT Elite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -12,124 +12,72 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap');
         
-        /* FIX: Prevent horizontal scrolling and "moving" */
         html, body { 
-            background: #131314; 
-            color: #e3e3e3; 
-            font-family: 'Google Sans', sans-serif; 
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* Lock the main body */
-            position: fixed; /* Stop pull-to-refresh movement */
-            touch-action: manipulation;
+            background: #131314; color: #e3e3e3; font-family: 'Google Sans', sans-serif; 
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed;
         }
 
         .gemini-blue { color: #8ab4f8; }
 
-        /* Sidebar Fix for Mobile */
         .sidebar { 
-            background: #1e1f20; 
-            width: 280px; 
-            transition: transform 0.3s ease; 
-            position: fixed; 
-            height: 100vh; 
-            z-index: 200; 
-            left: 0;
-            transform: translateX(-100%);
-            border-right: 1px solid #333; 
+            background: #1e1f20; width: 280px; transition: 0.3s; position: fixed; 
+            height: 100vh; z-index: 200; left: -280px; border-right: 1px solid #333; 
         }
-        .sidebar.open { transform: translateX(0); }
+        .sidebar.open { left: 0; }
 
-        /* Overlay to darken background when sidebar is open */
         #overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 150;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 150;
         }
 
-        /* Responsive Main Flow */
-        main {
-            height: calc(100vh - 160px); /* Adjust based on header/footer height */
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
+        main { height: calc(100vh - 140px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .user-bubble { background: #2b2d31; border-radius: 20px; padding: 12px 20px; max-width: 85%; margin-left: auto; }
+        .ai-row { display: flex; gap: 12px; margin-top: 25px; align-items: flex-start; }
+        .s-spark { width: 30px; height: 30px; flex-shrink: 0; filter: drop-shadow(0 0 5px #8ab4f8); }
 
-        .user-bubble { 
-            background: #2b2d31; 
-            border-radius: 20px; 
-            padding: 12px 18px; 
-            max-width: 85%; 
-            margin-left: auto;
-            word-wrap: break-word;
-        }
+        .code-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 5px; }
+        .act-btn { background: #3c4043; color: white; padding: 3px 8px; border-radius: 5px; font-size: 10px; cursor: pointer; }
+        .act-btn:hover { background: #8ab4f8; color: black; }
 
-        .ai-row { 
-            display: flex; 
-            gap: 12px; 
-            margin-top: 25px; 
-            align-items: flex-start;
-        }
+        .terminal { background: #000; border: 1px solid #3c4043; border-radius: 8px; margin-top: 10px; display: none; font-family: monospace; padding: 10px; color: #10b981; }
 
-        .s-spark { width: 28px; height: 28px; flex-shrink: 0; }
-        
-        /* Fix Input bar for Mobile */
-        .input-pill { 
-            background: #1e1f20; 
-            border-radius: 28px; 
-            border: 1px solid #3c4043; 
-            width: 100%;
-        }
-
-        pre { 
-            max-width: 100%; 
-            overflow-x: auto; 
-            border-radius: 12px !important; 
-            font-size: 13px !important;
-        }
-        
+        pre { border-radius: 12px !important; background: #000 !important; border: 1px solid #333; position: relative; margin: 15px 0 !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
         .loader { height: 3px; width: 100%; background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); background-size: 200% 100%; animation: pulse 1.5s infinite; display: none; }
         @keyframes pulse { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
     </style>
 </head>
-<body class="flex flex-col">
+<body class="flex flex-col" onload="loadHistory()">
 
     <div id="overlay" onclick="toggleSide()"></div>
 
     <nav id="sidebar" class="sidebar p-5 flex flex-col">
         <div class="flex items-center justify-between mb-8">
-            <span class="font-bold text-lg">SidakGPT</span>
+            <span class="font-bold">Chat History</span>
             <i data-lucide="x" onclick="toggleSide()" class="cursor-pointer"></i>
         </div>
-        <button onclick="newChat()" class="bg-[#2b2d31] p-4 rounded-2xl flex items-center gap-3 mb-6">
-            <i data-lucide="plus"></i> New Chat
-        </button>
-        <div id="history-list" class="flex-1 overflow-y-auto no-scrollbar space-y-2 text-zinc-400"></div>
+        <button onclick="newChat()" class="bg-[#2b2d31] p-4 rounded-xl flex items-center gap-3 mb-6"><i data-lucide="plus"></i> New Chat</button>
+        <div id="history-list" class="flex-1 overflow-y-auto no-scrollbar space-y-2"></div>
     </nav>
 
     <header class="p-4 flex items-center justify-between bg-[#131314] z-50">
         <i data-lucide="menu" onclick="toggleSide()" class="cursor-pointer"></i>
-        <div class="text-lg font-medium gemini-blue">SidakGPT</div>
+        <div class="text-lg font-medium gemini-blue">SidakGPT Elite</div>
         <div class="s-spark"><svg viewBox="0 0 24 24" fill="#8ab4f8"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg></div>
     </header>
 
     <main id="flow" class="flex-1 px-4 md:px-64 py-4 no-scrollbar">
-        <div id="welcome" class="mt-20 text-center px-6">
-            <h1 class="text-4xl font-medium bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 bg-clip-text text-transparent pb-2">Hello, Sidak</h1>
-            <p class="text-zinc-500 text-lg">India's first AI is optimized for your mobile.</p>
+        <div id="welcome" class="mt-20 text-center">
+            <h1 class="text-4xl font-medium text-white pb-2">Hello, Sidak</h1>
+            <p class="text-zinc-500">India's first AI is optimized and ready.</p>
         </div>
     </main>
 
     <footer class="p-4 md:px-64 bg-[#131314]">
         <div id="loader" class="loader mb-3 rounded-full"></div>
-        <div class="input-pill flex items-center px-4 py-1 gap-3">
-            <input id="prompt" class="flex-1 bg-transparent py-3 outline-none text-white text-md" placeholder="Ask SidakGPT..." autocomplete="off">
-            <button onclick="run()" class="text-blue-400"><i data-lucide="send-horizontal" class="w-6 h-6"></i></button>
+        <div class="flex items-center bg-[#1e1f20] border border-[#3c4043] rounded-full px-5 py-1 gap-3">
+            <input id="prompt" class="flex-1 bg-transparent py-4 outline-none text-white" placeholder="Message SidakGPT..." autocomplete="off">
+            <button onclick="run()" class="text-blue-400"><i data-lucide="send-horizontal"></i></button>
         </div>
     </footer>
 
@@ -139,46 +87,111 @@
         let currentChatId = null;
 
         function toggleSide() {
-            const sb = document.getElementById('sidebar');
-            const ov = document.getElementById('overlay');
-            sb.classList.toggle('open');
-            ov.style.display = sb.classList.contains('open') ? 'block' : 'none';
+            const s = document.getElementById('sidebar');
+            const o = document.getElementById('overlay');
+            s.classList.toggle('open');
+            o.style.display = s.classList.contains('open') ? 'block' : 'none';
         }
 
-        function newChat() {
-            currentChatId = Date.now();
-            document.getElementById('flow').innerHTML = '';
-            toggleSide();
+        function newChat() { currentChatId = Date.now(); document.getElementById('flow').innerHTML = ''; toggleSide(); }
+
+        function saveMsg(role, text) {
+            if(!currentChatId) currentChatId = Date.now();
+            let h = JSON.parse(localStorage.getItem('sidak_h') || '{}');
+            if(!h[currentChatId]) h[currentChatId] = { title: text.substring(0,25), msgs: [] };
+            h[currentChatId].msgs.push({role, text});
+            localStorage.setItem('sidak_h', JSON.stringify(h));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            const list = document.getElementById('history-list');
+            const h = JSON.parse(localStorage.getItem('sidak_h') || '{}');
+            list.innerHTML = '';
+            Object.keys(h).reverse().forEach(id => {
+                const d = document.createElement('div');
+                d.className = 'p-3 hover:bg-[#3c4043] rounded-lg cursor-pointer text-sm truncate';
+                d.innerText = h[id].title;
+                d.onclick = () => { currentChatId = id; renderChat(h[id].msgs); toggleSide(); };
+                list.appendChild(d);
+            });
+        }
+
+        function renderChat(msgs) {
+            const flow = document.getElementById('flow');
+            document.getElementById('welcome').style.display = 'none';
+            flow.innerHTML = '';
+            msgs.forEach(m => {
+                if(m.role === 'user') flow.innerHTML += `<div class="flex justify-end my-4"><div class="user-bubble">${m.text}</div></div>`;
+                else flow.innerHTML += `<div class="ai-row"><div class="s-spark"><svg viewBox="0 0 24 24" fill="#8ab4f8"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg></div><div class="flex-1">${marked.parse(m.text)}</div></div>`;
+            });
+            attachActions();
+            Prism.highlightAll();
+        }
+
+        function attachActions() {
+            document.querySelectorAll('pre').forEach(pre => {
+                if(!pre.querySelector('.code-actions')) {
+                    const code = pre.querySelector('code');
+                    const isJS = code.className.includes('js') || code.className.includes('javascript');
+                    const actions = document.createElement('div');
+                    actions.className = 'code-actions';
+                    actions.innerHTML = `<button class="act-btn" onclick="download(this)">SAVE</button>${isJS ? '<button class="act-btn" style="background:#8ab4f8;color:black" onclick="runJS(this)">RUN</button>' : ''}`;
+                    pre.appendChild(actions);
+                    if(isJS) {
+                        const term = document.createElement('div');
+                        term.className = 'terminal';
+                        term.innerHTML = `<div style="color:#8ab4f8;font-size:10px;margin-bottom:5px">OUTPUT:</div><div class="out"></div>`;
+                        pre.after(term);
+                    }
+                }
+            });
+        }
+
+        function runJS(btn) {
+            const pre = btn.closest('pre');
+            const code = pre.querySelector('code').innerText;
+            const term = pre.nextElementSibling;
+            const out = term.querySelector('.out');
+            term.style.display = 'block';
+            try {
+                let logs = "";
+                const oldLog = console.log;
+                console.log = (m) => logs += m + "\n";
+                eval(code);
+                console.log = oldLog;
+                out.innerText = logs || "Success (No Output)";
+            } catch(e) { out.innerText = "Error: " + e.message; }
+        }
+
+        function download(btn) {
+            const code = btn.closest('pre').querySelector('code').innerText;
+            const blob = new Blob([code], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "sidak_code.txt";
+            a.click();
         }
 
         async function run() {
             const input = document.getElementById('prompt');
-            const txt = input.value.trim();
-            if(!txt) return;
-
+            if(!input.value.trim()) return;
+            const txt = input.value;
             document.getElementById('welcome').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
-            
-            const flow = document.getElementById('flow');
-            flow.innerHTML += `<div class="flex justify-end my-4"><div class="user-bubble text-[15px]">${txt}</div></div>`;
+            document.getElementById('flow').innerHTML += `<div class="flex justify-end my-4"><div class="user-bubble">${txt}</div></div>`;
+            saveMsg('user', txt);
             input.value = "";
-            flow.scrollTop = flow.scrollHeight;
 
             try {
                 const res = await fetch(BRAIN, { method: 'POST', body: JSON.stringify({ messages: [{content: txt}] }) });
                 const data = await res.json();
                 document.getElementById('loader').style.display = 'none';
-                
-                flow.innerHTML += `
-                    <div class="ai-row">
-                        <div class="s-spark"><svg viewBox="0 0 24 24" fill="#8ab4f8"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg></div>
-                        <div class="flex-1 text-[15px] leading-relaxed text-[#e3e3e3]">
-                            ${marked.parse(data.reply)}
-                        </div>
-                    </div>`;
-                
+                document.getElementById('flow').innerHTML += `<div class="ai-row"><div class="s-spark"><svg viewBox="0 0 24 24" fill="#8ab4f8"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg></div><div class="flex-1">${marked.parse(data.reply)}</div></div>`;
+                saveMsg('ai', data.reply);
+                attachActions();
                 Prism.highlightAll();
-                flow.scrollTo({ top: flow.scrollHeight, behavior: 'smooth' });
+                document.getElementById('flow').scrollTop = document.getElementById('flow').scrollHeight;
             } catch(e) { document.getElementById('loader').style.display = 'none'; }
         }
     </script>
