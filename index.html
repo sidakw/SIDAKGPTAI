@@ -9,37 +9,45 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&display=swap');
-        body { background: #131314; color: #e3e3e3; font-family: 'Google Sans', sans-serif; overflow: hidden; }
         
-        /* The exact Gemini Blue from your title */
-        .gemini-blue { color: #8ab4f8; }
+        :root {
+            --gemini-blue: #8ab4f8;
+            --bg-dark: #131314;
+            --sidebar-dark: #1e1f20;
+        }
+
+        body { background: var(--bg-dark); color: #e3e3e3; font-family: 'Google Sans', sans-serif; overflow: hidden; }
         
-        .input-bar { background: #1e1f20; border-radius: 28px; border: 1px solid #3c4043; }
-        .sidebar { background: #1e1f20; width: 280px; transition: 0.3s; position: fixed; height: 100vh; z-index: 100; left: -280px; }
-        .sidebar.open { left: 0; }
-        
-        .user-bubble { background: #2b2d31; border-radius: 20px; padding: 12px 20px; max-width: 85%; }
-        
-        .ai-container { display: flex; gap: 16px; margin-top: 24px; }
-        
-        /* Custom "S" Star Avatar with Bluish Theme */
-        .ai-avatar { 
-            width: 32px; 
-            height: 32px; 
-            border-radius: 50%; 
-            flex-shrink: 0; 
+        /* THE CENTERED TITLE COLOR */
+        .brand-title { color: var(--gemini-blue); font-weight: 500; font-size: 1.25rem; }
+
+        /* THE "S" ICON STYLE */
+        .s-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #1e1f20;
+            border: 1.5px solid var(--gemini-blue);
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #1e1f20; /* Dark inner circle */
-            border: 1.5px solid #8ab4f8; /* Glowing Blue border */
-            box-shadow: 0 0 10px rgba(138, 180, 248, 0.2); /* Soft blue glow */
-            color: #8ab4f8;
-            font-weight: 500;
+            color: var(--gemini-blue);
+            font-weight: 600;
             font-size: 16px;
+            box-shadow: 0 0 8px rgba(138, 180, 248, 0.3);
+            flex-shrink: 0;
         }
 
+        .input-bar { background: var(--sidebar-dark); border-radius: 28px; border: 1px solid #3c4043; }
+        .sidebar { background: var(--sidebar-dark); width: 280px; transition: 0.3s; position: fixed; height: 100vh; z-index: 100; left: -280px; }
+        .sidebar.open { left: 0; }
+        
+        .user-bubble { background: #2b2d31; border-radius: 20px; padding: 12px 20px; max-width: 85%; margin-left: auto; }
+        
+        .ai-row { display: flex; gap: 16px; margin-top: 28px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* LOADING BAR */
         .loader-bar { height: 4px; width: 100%; background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); background-size: 200% 100%; animation: pulse 1.5s infinite; display: none; }
         @keyframes pulse { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
     </style>
@@ -49,7 +57,7 @@
     <nav id="sidebar" class="sidebar flex flex-col p-4 shadow-2xl">
         <div class="flex items-center gap-3 mb-8 p-2">
             <button onclick="toggleSide()"><i data-lucide="menu"></i></button>
-            <span class="font-bold text-lg">Menu</span>
+            <span class="font-bold text-lg">SidakGPT</span>
         </div>
         <button onclick="location.reload()" class="flex items-center gap-3 bg-[#2b2d31] p-4 rounded-full text-sm font-medium hover:bg-[#3c4043]">
             <i data-lucide="plus"></i> New Chat
@@ -59,8 +67,8 @@
     <div class="flex-1 flex flex-col h-screen relative">
         <header class="p-4 flex items-center justify-between bg-[#131314] sticky top-0 z-10">
             <button onclick="toggleSide()" class="p-2 hover:bg-zinc-800 rounded-full"><i data-lucide="menu"></i></button>
-            <div class="absolute left-1/2 transform -translate-x-1/2 text-xl font-medium gemini-blue">SidakGPT</div>
-            <div class="ai-avatar">S</div>
+            <div class="absolute left-1/2 transform -translate-x-1/2 brand-title">SidakGPT</div>
+            <div class="s-avatar">S</div>
         </header>
 
         <main id="flow" class="flex-1 overflow-y-auto px-4 md:px-48 py-6 no-scrollbar">
@@ -82,7 +90,7 @@
                     <i data-lucide="image" class="w-6 h-6 text-zinc-400"></i>
                     <input type="file" id="file" class="hidden" accept="image/*" onchange="preview(this)">
                 </label>
-                <input id="prompt" class="flex-1 bg-transparent py-4 outline-none text-white text-md" placeholder="Enter a prompt here">
+                <input id="prompt" class="flex-1 bg-transparent py-4 outline-none text-white text-md" placeholder="Ask SidakGPT...">
                 <button onclick="run()" class="text-[#8ab4f8] p-2 hover:bg-zinc-700 rounded-full transition">
                     <i data-lucide="send-horizontal" class="w-6 h-6"></i>
                 </button>
@@ -111,7 +119,10 @@
 
             document.getElementById('welcome').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
+            
+            // USER MESSAGE
             flow.innerHTML += `<div class="flex justify-end my-6"><div class="user-bubble text-sm md:text-md">${txt}</div></div>`;
+            
             const sendImg = currentImg; clearImg(); input.value = "";
             flow.scrollTop = flow.scrollHeight;
 
@@ -119,31 +130,37 @@
                 const res = await fetch(BRAIN, { method: 'POST', body: JSON.stringify({ messages: [{content: txt}], image: sendImg }) });
                 const data = await res.json();
                 document.getElementById('loader').style.display = 'none';
-                let ai = data.reply; let media = "";
+                let ai = data.reply;
+                let mediaHtml = "";
 
+                // Detect media tags
                 const match = ai.match(/\[(PHOTO|VIDEO|DRAW):(.*?)\]/i);
                 if(match) {
                     const type = match[1].toLowerCase();
                     const topic = match[2].trim();
-                    if(type === 'draw') media = `<img src="https://image.pollinations.ai/prompt/${encodeURIComponent(topic)}?nologo=true" class="rounded-2xl mt-4 max-w-full shadow-lg">`;
+                    if(type === 'draw') mediaHtml = `<img src="https://image.pollinations.ai/prompt/${encodeURIComponent(topic)}?nologo=true" class="rounded-2xl mt-4 max-w-full shadow-md border border-zinc-800">`;
                     else {
                         const pRes = await fetch(BRAIN, { method: 'POST', body: JSON.stringify({ type: 'pexels', media: type, prompt: topic }) });
                         const pData = await pRes.json();
-                        media = type === 'video' ? `<video src="${pData.url}" controls autoplay muted loop class="rounded-2xl mt-4 max-w-full shadow-lg"></video>` : `<img src="${pData.url}" class="rounded-2xl mt-4 max-w-full shadow-lg">`;
+                        mediaHtml = type === 'video' ? `<video src="${pData.url}" controls autoplay muted loop class="rounded-2xl mt-4 max-w-full"></video>` : `<img src="${pData.url}" class="rounded-2xl mt-4 max-w-full">`;
                     }
                 }
 
+                // AI MESSAGE WITH "S" AVATAR
                 flow.innerHTML += `
-                    <div class="ai-container">
-                        <div class="ai-avatar">S</div>
+                    <div class="ai-row">
+                        <div class="s-avatar shadow-lg">S</div>
                         <div class="flex-1">
-                            <div class="prose prose-invert prose-sm leading-relaxed text-[#e3e3e3]">${marked.parse(ai)}</div>
-                            ${media}
+                            <div class="prose prose-invert prose-sm leading-relaxed text-[#e3e3e3] font-normal">${marked.parse(ai)}</div>
+                            ${mediaHtml}
                         </div>
                     </div>
                 `;
                 flow.scrollTop = flow.scrollHeight;
-            } catch(e) { document.getElementById('loader').style.display = 'none'; }
+            } catch(e) { 
+                document.getElementById('loader').style.display = 'none';
+                flow.innerHTML += `<div class="text-red-400 text-xs py-4 text-center">Connection error. Check your Worker.</div>`;
+            }
         }
     </script>
 </body>
